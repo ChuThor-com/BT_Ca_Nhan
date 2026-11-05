@@ -1,26 +1,278 @@
-DANH SÁCH 5 TEST CASE KIỂM THỬ CHỨC NĂNG
+# Bài Tập Cá Nhân - Refactor MVC (Module Category)
 
-1. Test Case 1: Thêm sản phẩm hợp lệ
-- Dữ liệu nhập: MaSP=SP99, TenSP=Bút xóa, MaLoai=L01, DonGia=15000, SoLuongTon=10
-- Kết quả mong đợi: Thêm thành công, chuyển về trang danh sách.
-- Kết quả thực tế: Thành công (Pass).
+## 1. Quá trình Refactor (Trước và Sau)
 
-2. Test Case 2: Thêm sản phẩm bị trùng mã (Sai)
-- Dữ liệu nhập: MaSP=SP01 (đã tồn tại), TenSP=Test...
-- Kết quả mong đợi: Báo lỗi khóa chính trùng, không cho thêm.
-- Kết quả thực tế: Hệ thống báo lỗi (Pass).
+### Sau khi Refactor (After)
+- Đã tách dự án thành các tầng rõ ràng theo mô hình MVC + Repository:
+  - **Repository (`CategoryRepository.php`):** Chứa 100% các câu lệnh truy vấn SQL. Không dính dáng tới HTML.
+  - **Controller (`AdminCategoryController.php`):** Nhận request, kiểm tra quyền (chỉ Admin), xử lý logic, gọi Repository và trả dữ liệu sang View.
+  - **View (`admin/category/index.php`, `form.php`):** Chỉ chứa HTML/PHP để hiển thị dữ liệu, không chứa logic SQL.
+- Đã tích hợp bảo mật: Kiểm tra CSRF token khi submit form, phân quyền bằng `Auth::requireRole('admin')`.
 
-3. Test Case 3: Thêm sản phẩm có giá trị âm (Sai)
-- Dữ liệu nhập: DonGia = -5000
-- Kết quả mong đợi: Không cho phép nhập, báo lỗi validate hoặc CSDL chặn.
-- Kết quả thực tế: Thẻ input HTML chặn lại (Pass).
+## 2. Mô tả các Route mới
+- `GET ?route=admin/categories`: Hiển thị danh sách danh mục.
+- `GET ?route=admin/categories/create`: Hiển thị form thêm mới.
+- `POST ?route=admin/categories/store`: Xử lý thêm mới.
+- `GET ?route=admin/categories/edit&id=...`: Hiển thị form chỉnh sửa.
+- `POST ?route=admin/categories/update`: Xử lý cập nhật.
+- `POST ?route=admin/categories/delete`: Xử lý xóa.
 
-4. Test Case 4: Cập nhật tên sản phẩm (Sửa)
-- Dữ liệu nhập: Sửa SP01 thành "Bút bi xanh", giá 6000.
-- Kết quả mong đợi: Lưu thành công, tên hiển thị đổi mới.
-- Kết quả thực tế: Thành công (Pass).
+## 3. Phân công công việc
+- **Cá nhân:** - Đã thực hiện tách Class Repository, tạo Controller, View và viết README.
+# MiniShop MVC Demo
 
-5. Test Case 5: Xóa sản phẩm đang có trong đơn hàng (Sai)
-- Dữ liệu nhập: Bấm xóa SP01 (SP này đang có trong ChiTietDonHang).
-- Kết quả mong đợi: Báo lỗi không thể xóa do ràng buộc khóa ngoại.
-- Kết quả thực tế: Hệ thống báo "Không thể xóa vì sản phẩm đã có trong đơn hàng!" (Pass).
+Hệ demo dùng trong học phần Lập trình Web.
+
+
+## 2. Cấu trúc
+
+```text
+minishop_mvc_demo/
+├── composer.json
+├── config/
+│   └── config.php
+├── database/
+│   └── minishop.sql
+├── public/
+│   ├── index.php
+│   └── assets/
+│       ├── app.js
+│       └── style.css
+└── src/
+    ├── Core/
+    │   ├── Auth.php
+    │   ├── Controller.php
+    │   ├── Database.php
+    │   └── helpers.php
+    ├── Controller/
+    │   ├── AdminProductController.php
+│   ├── AdminUserController.php
+    │   ├── ApiProductController.php
+    │   ├── AuthController.php
+    │   ├── OrderController.php
+    │   └── ProductController.php
+    ├── Repository/
+    │   ├── OrderRepository.php
+    │   ├── ProductRepository.php
+    │   └── UserRepository.php
+    └── View/
+        ├── admin/product/
+        ├── admin/user/
+        ├── auth/
+        ├── layout/
+        ├── order/
+        └── product/
+```
+
+## 3. Cài trên WAMP
+
+1. Chép thư mục vào:
+
+```text
+C:\wamp64\www\minishop_mvc_demo
+```
+
+2. Mở phpMyAdmin.
+3. Import file:
+
+```text
+database/minishop.sql
+```
+
+4. Mở terminal tại thư mục project:
+
+```bash
+composer dump-autoload
+```
+
+5. Truy cập:
+
+```text
+http://localhost/minishop_mvc_demo/public/index.php
+```
+
+Nếu mật khẩu MySQL root của WAMP không rỗng, sửa `config/config.php`
+hoặc đặt biến môi trường `DB_PASS`.
+
+## 4. Tài khoản demo
+
+```text
+Admin
+admin@example.com
+Admin@123
+
+Customer
+customer@example.com
+Customer@123
+```
+
+## 5. Demo Bài 7
+
+### 5.0 Tạo người dùng và minh họa password_hash()
+
+Đăng nhập admin rồi mở:
+
+```text
+?route=admin/users
+```
+
+Chọn **Thêm người dùng**. Form gửi mật khẩu rõ qua POST trong request hiện tại; Controller không lưu trực tiếp mật khẩu đó mà tạo hash:
+
+```php
+$passwordHash = password_hash($password, PASSWORD_DEFAULT);
+```
+
+Sau đó Repository chỉ INSERT `$passwordHash` vào cột `users.password_hash`.
+
+Demo trên lớp:
+
+1. Mở phpMyAdmin → bảng `users` trước khi tạo user.
+2. Tạo user mới với mật khẩu ví dụ `Demo@1234`.
+3. Refresh bảng `users`: cột `password_hash` chứa chuỗi hash, không chứa `Demo@1234`.
+4. Logout và đăng nhập bằng user mới. `AuthController` dùng:
+
+```php
+password_verify($password, $user['password_hash'])
+```
+
+Lưu ý thuật ngữ: đây là **băm mật khẩu (hashing)**, không phải mã hóa có thể giải mã ngược.
+
+### 5.1 Authentication
+
+Mở:
+
+```text
+?route=login
+```
+
+Điểm cần chỉ ra:
+
+- User được lấy bằng email qua prepared statement.
+- Mật khẩu được kiểm tra bằng `password_verify()`.
+- Sau đăng nhập gọi `session_regenerate_id(true)`.
+- Session chỉ lưu `user_id`, `role`, `full_name`, không lưu password/hash.
+
+### 5.2 Authorization theo role
+
+Đăng nhập customer rồi nhập trực tiếp URL:
+
+```text
+?route=admin/products
+```
+
+Kết quả mong đợi: HTTP 403.
+
+Sau đó đăng nhập admin và truy cập lại.
+
+### 5.3 CSRF
+
+Mở:
+
+```text
+?route=admin/products
+```
+
+Form xóa có hidden `csrf`.
+
+Xóa token trong DevTools rồi submit:
+server phải trả 419.
+
+### 5.4 Ownership
+
+Đăng nhập customer:
+
+```text
+?route=my-orders
+```
+
+Mở chi tiết đơn.
+
+Sau đó sửa `id` trên URL thành một id không thuộc user hiện tại.
+Repository dùng cả `order_id` và `user_id` nên không trả dữ liệu trái quyền.
+
+## 6. Demo Bài 8
+
+### 6.1 JSON endpoint
+
+Mở trực tiếp:
+
+```text
+?route=api/products&q=USB
+```
+
+Quan sát:
+
+- `Content-Type: application/json`.
+- JSON chỉ trả dữ liệu cần thiết.
+- Không có `password_hash`.
+
+### 6.2 Fetch API
+
+Vào:
+
+```text
+?route=products
+```
+
+Gõ từ khóa vào ô tìm kiếm.
+
+Mở DevTools → Network và quan sát request:
+
+```text
+index.php?route=api/products&q=...
+```
+
+Điểm cần chỉ ra:
+
+- `fetch()`
+- `response.ok`
+- `await response.json()`
+- debounce 300 ms
+- cập nhật DOM bằng `textContent`
+
+## 7. Luồng MVC minh họa
+
+```text
+Browser
+  ↓
+public/index.php          ← Front Controller / Router
+  ↓
+Controller                ← đọc request, kiểm tra quyền, chọn luồng
+  ↓
+Repository                ← PDO / SQL
+  ↓
+MySQL
+  ↓
+Repository
+  ↓
+Controller
+  ↓
+View                      ← HTML
+
+Bài 8:
+Browser → Fetch → ApiProductController → ProductRepository → MySQL → JSON
+```
+
+
+---
+
+# Phần cá nhân – Bài 7 & Bài 8 (module Danh mục)
+
+## Bài 7 – Đăng nhập/đăng xuất, password_hash, test truy cập khi chưa đăng nhập
+
+- `AuthController::login`: chuẩn hóa email, kiểm tra rỗng, luôn gọi `password_verify()` (kể cả khi email không tồn tại, dùng hash giả) và dùng một thông báo lỗi chung; `password_needs_rehash()` để băm lại khi cần; `session_regenerate_id(true)` trong `Auth::login()`.
+- Quay lại đúng URL đang vào sau khi đăng nhập: `Auth::requireLogin()` lưu URL (chỉ GET), `Auth::pullIntendedUrl()` chỉ chấp nhận đường dẫn nội bộ (chống open redirect).
+- `logout`: yêu cầu đăng nhập + CSRF, hủy session, cấp session mới.
+- Tài khoản mẫu trong `database/minishop.sql` lưu bằng `password_hash()` (bcrypt `$2y$`). Kiểm tra: `php tests/seed_password_test.php`. Tạo hash mới: `php tools/hash_password.php "MậtKhẩu"`.
+- Test case truy cập URL khi chưa đăng nhập: `docs/TEST_CASES_BAI7.md`; chạy tự động: `php tests/unauth_access_test.php http://localhost/minishop_mvc_demo/public/index.php`.
+
+## Bài 8 – JSON endpoint + Fetch
+
+- Endpoint mới: `GET ?route=api/categories&q=...&status=active|inactive` (`ApiCategoryController`, `CategoryRepository::search`). Chỉ admin; lỗi trả JSON 401/403/422/500.
+- Giao diện: panel "Tìm nhanh (Fetch API)" ở `?route=admin/categories` (`public/assets/category-live.js`) có loading, hiển thị lỗi, nút Thử lại, debounce 300 ms, hủy request cũ bằng `AbortController`, dựng DOM bằng `textContent`.
+- Checklist kiểm thử: `docs/CHECKLIST_BAI8.md`.
+
+## Sửa lỗi kèm theo
+
+- `ProductRepository::searchActive` dùng lặp tham số `:keyword` (không hợp lệ khi `ATTR_EMULATE_PREPARES = false`) → tách thành `:keyword_name`, `:keyword_code`.
+- `AdminCategoryController`: kiểm tra `status` hợp lệ, bắt lỗi trùng tên và lỗi khóa ngoại khi xóa danh mục đang có sản phẩm (hiện thông báo thay vì lỗi 500).
